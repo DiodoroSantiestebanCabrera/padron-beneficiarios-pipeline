@@ -1,0 +1,34 @@
+{
+  "name": "Data Engineering Pipeline (PySpark + uv)",
+  "build": { "dockerfile": "Dockerfile" },
+  // Sin "workspaceFolder" -- se deja que Dev Containers monte y detecte todo automáticamente,
+  // tal como ya funcionaba antes de mi corrección anterior.
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "17",
+      "installMaven": "false",
+      "installGradle": "false"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/workspaces/padron-beneficiarios-pipeline/.venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "[python]": {
+          "editor.formatOnSave": true,
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        }
+      },
+      "extensions": [
+        "charliermarsh.ruff", 
+        "ms-python.python", 
+        "skellock.just", 
+        "databricks.databricks"
+      ]
+    }
+  },
+  "postCreateCommand": "uv sync --locked && uv run pre-commit install",
+  "postStartCommand": "uv sync --locked",
+  "remoteUser": "vscode"
+}

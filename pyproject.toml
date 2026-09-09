@@ -1,0 +1,23 @@
+[project]
+name = "padron-beneficiarios-pipeline"
+version = "0.1.0"
+description = "Pipeline de datos end-to-end con arquitectura Medallion para el padrón de beneficiarios (datos sintéticos)"
+authors = [
+    { name = "Diodoro Santiesteban", email = "santies.diodoro.prog16m@gmail.com" }
+]
+requires-python = "==3.11.*"   # Ver pendiente de verificación al final de este documento
+dependencies = [
+    "pyspark==4.0.0",           # Databricks Runtime 17.3 LTS
+    "pandas==2.2.3",            # Versión exacta observada en el entorno de Databricks Runtime 17.x
+    "pyarrow>=15.0.0,<20.0.0",  # Acotado -- sin techo se resolvía a 25.0.1, sin probar contra el Runtime
+    "openpyxl>=3.1.5",
+    "ftfy>=6.3.1",
+    "rapidfuzz>=3.14.6",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.2",
+    "pytest>=9.1.1",
+    "ruff>=0.16.6",
+]
