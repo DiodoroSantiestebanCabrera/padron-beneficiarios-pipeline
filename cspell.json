@@ -1,0 +1,19 @@
+{
+  "version": "0.2",
+  "language": "en,es",
+  "ignorePaths": [
+    ".git",
+    ".vscode",
+    ".devcontainer",
+    "uv.lock",
+    "dist",
+    "build"
+  ],
+  "words": [
+    "pyspark",
+    "databricks",
+    "pytest",
+    "padron",
+    "beneficiarios"
+  ]
+}
