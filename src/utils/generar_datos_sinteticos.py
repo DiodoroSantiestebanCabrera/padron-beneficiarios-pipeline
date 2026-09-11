@@ -194,3 +194,28 @@ if __name__ == "__main__":
     ruta_salida = "data/synthetic/padron_sintetico_2026-07.csv"
     df.to_csv(ruta_salida, index=False, encoding="utf-8")
     print(f"Generadas {len(df)} filas sintéticas en {ruta_salida}")
+
+
+def generar_periodo_siguiente(
+    padron_previo: pd.DataFrame,
+    n_filas_nuevas: int = 1_580,
+    anio_mes: str = "2026-08",
+    proporcion_curps_repetidas: float = 0.1,
+) -> pd.DataFrame:
+    """Genera un lote nuevo simulando el mes siguiente: una parte de las
+    CURPs coincide a propósito con personas ya presentes en `padron_previo`
+    (actualización real, con folio nuevo), y el resto son personas nuevas."""
+    padron_nuevo = generar_padron_sintetico(n_filas=n_filas_nuevas, anio_mes=anio_mes)
+
+    folio_inicial = int(padron_previo["FOLIO DE TARJETA"].max()) + 1
+    padron_nuevo["FOLIO DE TARJETA"] = range(
+        folio_inicial, folio_inicial + n_filas_nuevas
+    )
+
+    n_actualizaciones = int(n_filas_nuevas * proporcion_curps_repetidas)
+    curps_a_reemplazar = (
+        padron_previo["CURP"].sample(n=n_actualizaciones, random_state=1).tolist()
+    )
+    padron_nuevo.loc[: n_actualizaciones - 1, "CURP"] = curps_a_reemplazar
+
+    return padron_nuevo
