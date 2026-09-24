@@ -216,3 +216,30 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ============================================================
+# REGLAS ESPECÍFICAS DEL PROYECTO (padron-beneficiarios-pipeline)
+# ============================================================
+# NUNCA versionar datos (contienen PII protegida)
+data/raw/**
+data/raw/**
+!data/raw/**/.gitkeep
+
+# Datos sintéticos (52 MB, se regeneran con `uv run python -m src.utils.generar_datos_sinteticos`)
+data/synthetic/**
+!data/synthetic/**/.gitkeep
+
+# Salidas de exploración y reportes
+reportes/
+reports/
+*.html
+!docs/**/*.html
+
+# Archivos Excel (típicamente contienen PII)
+*.xlsx
+*.xls
+!data/catalogs/*.csv
+
+# Notebooks (outputs pesados)
+notebooks/**/*.ipynb
+!notebooks/.gitkeep
