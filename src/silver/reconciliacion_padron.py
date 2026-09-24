@@ -14,13 +14,24 @@ class IntegridadFolioError(Exception):
     una baja de negocio normal, se detiene el pipeline para revisión."""
 
 
+class ReconciliacionError(Exception):
+    """Se lanza cuando la reconciliación de conteo no cuadra.
+    Reemplaza el uso de assert (que se desactiva con python -O)."""
+
+
 @dataclass
-class ResultadoReconciliacion:
+class ResultadoReconciliacion(Exception):
     """Agrupa los dos resultados de reconciliar un periodo: la tabla
     operativa actualizada, y el detalle de qué se dio de baja y por qué."""
 
     padron_maestro_operativo_nuevo: pd.DataFrame
     snapshot_bajas: pd.DataFrame
+
+
+def _normalizar_folios(serie: pd.Series) -> pd.Series:
+    """Convierte folios a Int64 para comparación robusta entre int y str.
+    Valores no numéricos se convierten en NA (que no empareja con nada)."""
+    return pd.to_numeric(serie, errors="coerce").astype("Int64")
 
 
 def _normalizar_curp(serie_curp: pd.Series) -> pd.Series:
@@ -32,16 +43,18 @@ def validar_integridad_folios(
     operativo_actual: pd.DataFrame, vigente_nuevo: pd.DataFrame
 ) -> None:
     """Verifica que ningún folio se repita donde no debería."""
-    folios_duplicados_en_vigente = vigente_nuevo["FOLIO DE TARJETA"].duplicated()
+    # CAMBIO: normalizar ambos lados antes de comparar
+    folios_nuevo = _normalizar_folios(vigente_nuevo["FOLIO DE TARJETA"])
+    folios_operativo = _normalizar_folios(operativo_actual["FOLIO DE TARJETA"])
+
+    folios_duplicados_en_vigente = folios_nuevo.duplicated()
     if folios_duplicados_en_vigente.any():
         raise IntegridadFolioError(
             f"El periodo nuevo trae {folios_duplicados_en_vigente.sum()} folios "
             "repetidos dentro de sí mismo."
         )
 
-    folios_ya_existentes = vigente_nuevo["FOLIO DE TARJETA"].isin(
-        operativo_actual["FOLIO DE TARJETA"]
-    )
+    folios_ya_existentes = folios_nuevo.isin(folios_operativo.dropna())
     if folios_ya_existentes.any():
         raise IntegridadFolioError(
             f"{folios_ya_existentes.sum()} folio(s) del periodo nuevo ya existen "
@@ -52,11 +65,19 @@ def validar_integridad_folios(
 def identificar_bajas_por_curp_duplicada(
     operativo_actual: pd.DataFrame, vigente_nuevo: pd.DataFrame
 ) -> pd.DataFrame:
-    """Encuentra folios del padrón operativo actual cuya CURP también
-    aparece en el periodo nuevo -- son la versión vieja de una actualización."""
-    curps_del_periodo_nuevo = set(_normalizar_curp(vigente_nuevo["CURP"]))
-    mascara_reemplazados = _normalizar_curp(operativo_actual["CURP"]).isin(
-        curps_del_periodo_nuevo
+    """Encuentra folios del operativo cuya CURP también aparece en el nuevo."""
+    # CAMBIO: dropna() para excluir CURPs nulas del set de comparación
+    curps_del_periodo_nuevo = set(_normalizar_curp(vigente_nuevo["CURP"]).dropna())
+
+    # Si no hay CURPs válidas en el nuevo, no hay bajas por CURP duplicada
+    if not curps_del_periodo_nuevo:
+        return pd.DataFrame(columns=["FOLIO DE TARJETA", "CURP", "motivo_baja"])
+
+    # CAMBIO: fillna(False) por seguridad adicional
+    mascara_reemplazados = (
+        _normalizar_curp(operativo_actual["CURP"])
+        .isin(curps_del_periodo_nuevo)
+        .fillna(False)
     )
 
     bajas = operativo_actual.loc[
@@ -79,9 +100,12 @@ def reconciliar_periodo(
     )
     bajas["periodo"] = periodo
 
-    folios_a_descartar = set(bajas["FOLIO DE TARJETA"])
+    # CAMBIO: normalizar folios antes de calcular el set a descartar
+    folios_a_descartar = set(_normalizar_folios(bajas["FOLIO DE TARJETA"]).dropna())
     operativo_sin_reemplazados = padron_maestro_operativo_actual[
-        ~padron_maestro_operativo_actual["FOLIO DE TARJETA"].isin(folios_a_descartar)
+        ~_normalizar_folios(padron_maestro_operativo_actual["FOLIO DE TARJETA"]).isin(
+            folios_a_descartar
+        )
     ]
 
     operativo_nuevo = pd.concat(
@@ -91,10 +115,12 @@ def reconciliar_periodo(
     conteo_esperado = (
         len(padron_maestro_operativo_actual) - len(bajas) + len(padron_vigente_nuevo)
     )
-    assert len(operativo_nuevo) == conteo_esperado, (
-        f"Reconciliación inconsistente: se esperaban {conteo_esperado} filas, "
-        f"resultaron {len(operativo_nuevo)}"
-    )
+
+    if len(operativo_nuevo) != conteo_esperado:
+        raise ReconciliacionError(
+            f"Reconciliación inconsistente: se esperaban {conteo_esperado} filas, "
+            f"resultaron {len(operativo_nuevo)}"
+        )
 
     return ResultadoReconciliacion(
         padron_maestro_operativo_nuevo=operativo_nuevo,
