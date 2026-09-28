@@ -1,0 +1,64 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: urn:datacontract:tlaxcala:bienestar:padron-beneficiarios
+name: padron-beneficiarios-pipeline
+version: 1.0.0
+status: active
+domain: secretaria-bienestar
+description:
+  purpose: >
+    Contrato formal de datos para el padrón mensual de beneficiarios.
+    Define las garantías estructurales y semánticas del padrón limpio/operativo en la capa Silver.
+  limitations: >
+    La columna CLAVE MUNICIPIO del archivo fuente no es confiable (RN-17) y se resuelve
+    en la capa Silver mediante catálogos INEGI. Los folios menores a 225001 corresponden
+    a plásticos legacy excluidos del operativo vigente (RN-27).
+
+servers:
+  - server: synthetic_csv
+    type: local
+    format: csv
+    path: data/synthetic/padron_sintetico_2026-07.csv
+  - server: silver_operativo
+    type: local
+    format: parquet
+    path: data/silver/padron_operativo/*.parquet
+
+schema:
+  - name: padron_beneficiarios
+    physicalName: padron_beneficiarios
+    logicalType: object
+    description: Estructura base del padrón de beneficiarios.
+    properties:
+      - name: FOLIO DE TARJETA
+        logicalType: integer
+        physicalType: Int64
+        required: true
+        unique: true
+        primaryKey: true
+        primaryKeyPosition: 1
+        description: Identificador único de la tarjeta asignada al beneficiario (corte vigente >= 225001).
+        logicalTypeOptions:
+          minimum: 225001
+
+      - name: CURP
+        logicalType: string
+        physicalType: string
+        required: true
+        description: Clave Única de Registro de Población de 18 caracteres.
+        logicalTypeOptions:
+          minLength: 18
+          maxLength: 18
+          pattern: "^[A-Z]{4}[0-9]{6}[HM][A-Z]{2}[B-DF-HJ-NP-TV-Z]{3}[A-Z0-9][0-9]$"
+
+      - name: MUNICIPIO
+        logicalType: string
+        physicalType: string
+        required: true
+        description: Nombre del municipio reportado en el padrón.
+
+      - name: CLAVE MUNICIPIO
+        logicalType: integer
+        physicalType: Int64
+        required: false
+        description: Clave de municipio en origen; no se valida como llave por inconsistencia conocida (RN-17).
