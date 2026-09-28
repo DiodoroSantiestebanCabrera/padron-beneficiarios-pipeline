@@ -5,7 +5,7 @@ description = "Pipeline de datos end-to-end con arquitectura Medallion para el p
 authors = [
     { name = "Diodoro Santiesteban", email = "santies.diodoro.prog16m@gmail.com" }
 ]
-requires-python = "==3.11.*"   # Ver pendiente de verificación al final de este documento
+requires-python = ">=3.11,<3.13"   # Ver pendiente de verificación al final de este documento
 dependencies = [
     "pyspark==4.0.0",           # Databricks Runtime 17.3 LTS
     "pandas==2.2.3",            # Versión exacta observada en el entorno de Databricks Runtime 17.x
@@ -21,6 +21,11 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.6",
     "faker>=40.38.0",
+    "datacontract-cli>=1.2.2",
+    "skimpy>=0.0.15",
+    "itables>=2.1.0",
+    "pyyaml>=6.0.2",
+    "great-expectations>=1.23.0,<2.0.0",
 ]
 
 [tool.pytest.ini_options]
